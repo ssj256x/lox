@@ -1,4 +1,4 @@
-package org.lang;
+package org.lang.lox;
 
 public class Token {
 
