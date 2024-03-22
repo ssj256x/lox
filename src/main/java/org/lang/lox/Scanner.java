@@ -185,7 +185,7 @@ public class Scanner {
 
 
     private void identifier() {
-        while (isAlpha(peek()))
+        while (isAlphaNumeric(peek()))
             advance();
 
         String text = source.substring(start, current);
