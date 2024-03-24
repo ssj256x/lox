@@ -1,0 +1,7 @@
+print "hi" or 2; // "hi".
+print nil or "yes"; // "yes".
+print 2 and 3;
+print "yes" and "no";
+print "yes" or "no";
+print true or "num";
+print true and "num";

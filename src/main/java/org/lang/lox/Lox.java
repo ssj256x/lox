@@ -40,8 +40,11 @@ public class Lox {
         var printPrg = "print.lox";
         var varPrg = "variables.lox";
         var scopesPrg = "scopes.lox";
+        var logicalPrg = "logical.lox";
+        var whilePrg = "while.lox";
+        var forPrg = "for.lox";
 
-        var currentPrg = STR."\{basePath}\{scopesPrg}";
+        var currentPrg = STR."\{basePath}\{whilePrg}";
 
         return new String[]{currentPrg};
     }
