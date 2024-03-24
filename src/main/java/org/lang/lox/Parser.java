@@ -1,17 +1,26 @@
 package org.lang.lox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.lang.lox.TokenType.*;
 
 /**
- * expression     → equality ;
+ * program        → declaration* EOF ;
+ * declaration    → varDecl | statement ;
+ * varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+ * statement      → exprStmt | printStmt | block ;
+ * block          → "{" declaration* "}" ;
+ * exprStmt       → expression ";" ;
+ * printStmt      → "print" expression ";" ;
+ * expression     → assignment ;
+ * assignment     → IDENTIFIER "=" assignment | equality ;
  * equality       → comparison ( ( "!=" | "==" ) comparison )* ;
  * comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
  * term           → factor ( ( "-" | "+" ) factor )* ;
  * factor         → unary ( ( "/" | "*" ) unary )* ;
  * unary          → ( "!" | "-" ) unary | primary ;
- * primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+ * primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
  */
 
 public class Parser {
@@ -27,12 +36,82 @@ public class Parser {
         this.current = 0;
     }
 
-    public Expr parse() {
+    public List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!isAtEnd()) {
+            statements.add(declaration());
+        }
+        return statements;
+    }
+
+    /**
+     * program → declaration* EOF ;
+     *
+     * @return parsed statements
+     */
+    private Stmt declaration() {
         try {
-            return expression();
+            if (match(VAR)) return varDeclaration();
+            return statement();
         } catch (ParseError e) {
+            synchronize();
             return null;
         }
+    }
+
+    /**
+     * program → exprStmt | printStmt ;
+     *
+     * @return parsed statements
+     */
+    private Stmt statement() {
+        if (match(PRINT)) return printStatement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
+        return expressionStatement();
+    }
+
+    /**
+     * printStmt → "print" expression ";" ;
+     *
+     * @return parsed statement
+     */
+    private Stmt printStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt varDeclaration() {
+        Token name = consume(IDENTIFIER, "Expect variable name.");
+
+        Expr initializer = null;
+        if (match(EQUAL))
+            initializer = expression();
+
+        consume(SEMICOLON, "Expect ; after variable declaration");
+        return new Stmt.Var(name, initializer);
+    }
+
+    /**
+     * exprStmt → expression ";" ;
+     *
+     * @return parsed statement
+     */
+    private Stmt expressionStatement() {
+        Expr value = expression();
+        consume(SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(value);
+    }
+
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while(!check(RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
     }
 
     /**
@@ -41,7 +120,24 @@ public class Parser {
      * @return parsed expression
      */
     private Expr expression() {
-        return equality();
+        return assignment();
+    }
+
+    private Expr assignment() {
+        Expr expr = equality();
+
+        if (match(EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment();
+
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable) expr).name;
+                return new Expr.Assign(name, value);
+            }
+
+            error(equals, "Invalid assignment target.");
+        }
+        return expr;
     }
 
     /**
@@ -135,16 +231,18 @@ public class Parser {
     private Expr primary() {
 
         // TODO : try to convert to switch-case
-
-        if (match(FALSE)) return new Expr.Literal(false);
-        if (match(TRUE)) return new Expr.Literal(true);
-        if (match(NIL)) return new Expr.Literal(null);
-        if (match(NUMBER, STRING)) return new Expr.Literal(previous().literal);
+        // @formatter:off
+        if (match(FALSE))           return new Expr.Literal(false);
+        if (match(TRUE))            return new Expr.Literal(true);
+        if (match(NIL))             return new Expr.Literal(null);
+        if (match(NUMBER, STRING))  return new Expr.Literal(previous().literal);
+        if (match(IDENTIFIER))      return new Expr.Variable(previous());
         if (match(LEFT_PAREN)) {
             Expr expr = expression();
             consume(RIGHT_PAREN, "Expect ')' after expression.");
             return new Expr.Grouping(expr);
         }
+        // @formatter:on
 
         throw error(peek(), "Expect expression.");
     }

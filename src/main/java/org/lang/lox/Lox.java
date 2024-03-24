@@ -16,13 +16,34 @@ public class Lox {
     private static final Interpreter interpreter = new Interpreter();
 
     public static void main(String[] args) throws IOException {
-        if (args.length > 1) {
-            System.out.println("Usage: jlox [script]");
-        } else if (args.length == 1) {
-            runFile(args[0]);
-        } else {
-            runPrompt();
+
+        args = setupPrg(args, true);
+
+        try {
+            if (args.length > 1) {
+                System.out.println("Usage: jlox [script]");
+            } else if (args.length == 1) {
+                runFile(args[0]);
+            } else {
+                runPrompt();
+            }
+        } catch (RuntimeError e) {
+            // swallow
         }
+    }
+
+    private static String[] setupPrg(String[] args, boolean init) {
+
+        if (!init) return new String[]{};
+
+        var basePath = "/Users/ssj256x/Code/Java/jlox/src/main/java/org/lang/test/";
+        var printPrg = "print.lox";
+        var varPrg = "variables.lox";
+        var scopesPrg = "scopes.lox";
+
+        var currentPrg = STR."\{basePath}\{scopesPrg}";
+
+        return new String[]{currentPrg};
     }
 
     private static void runPrompt() throws IOException {
@@ -52,12 +73,12 @@ public class Lox {
         List<Token> tokens = scanner.scanTokens();
 
         Parser parser = new Parser(tokens);
-        Expr expr = parser.parse();
+        List<Stmt> statements = parser.parse();
 
         // Stop if there was a syntax error
         if (hadError) return;
 
-        interpreter.interpret(expr);
+        interpreter.interpret(statements);
     }
 
     public static void error(int line, String message) {
@@ -66,11 +87,12 @@ public class Lox {
 
     static void error(Token token, String message) {
         if (token.type == TokenType.EOF) {
-            report(token.line, " at end", message);
+            report(token.line, "at end", message);
         } else {
-            report(token.line, STR." at '\{token.lexeme}'", message);
+            report(token.line, STR."at '\{token.lexeme}'", message);
         }
     }
+
     static void runtimeError(RuntimeError error) {
         System.err.println(STR."\{error.getMessage()} [line \{error.token.line}]");
         hadRuntimeError = true;
