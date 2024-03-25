@@ -1,0 +1,17 @@
+// Simple Function
+fun sayHi(first, last) {
+  print "Hi, " + first + " " + last + "!";
+}
+
+sayHi("Dear", "Reader");
+
+// Recursive Function
+
+// This does not work!! Even in the original source code of lox
+// https://github.com/ryanq/jlox
+fun count(n) {
+  if (n >= 0) count(n - 1);
+  print n;
+}
+
+count(3);

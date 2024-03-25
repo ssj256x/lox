@@ -43,8 +43,11 @@ public class Lox {
         var logicalPrg = "logical.lox";
         var whilePrg = "while.lox";
         var forPrg = "for.lox";
+        var functionPrg = "functions.lox";
+        var fibPrg = "fib.lox";
+        var closurePrg = "closure.lox";
 
-        var currentPrg = STR."\{basePath}\{whilePrg}";
+        var currentPrg = STR."\{basePath}\{functionPrg}";
 
         return new String[]{currentPrg};
     }

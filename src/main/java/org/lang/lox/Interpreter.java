@@ -1,15 +1,19 @@
 package org.lang.lox;
 
+import org.lang.lox.natives.ClockFn;
+
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.lang.lox.TokenType.*;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
-    private Environment environment;
+    final Environment globals = new Environment();
+    private Environment environment = globals;
 
     public Interpreter() {
-        environment = new Environment();
+        globals.define("clock", new ClockFn());
     }
 
     public void interpret(List<Stmt> statements) {
@@ -24,7 +28,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         stmt.accept(this);
     }
 
-    private void executeBlock(List<Stmt> statements, Environment environment) {
+    protected void executeBlock(List<Stmt> statements, Environment environment) {
         Environment previous = this.environment;
         try {
             this.environment = environment;
@@ -60,6 +64,13 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitFunctionStmt(Stmt.Function stmt) {
+        var function = new LoxFunction(stmt, environment);
+        environment.define(stmt.name.lexeme, function);
+        return null;
+    }
+
+    @Override
     public Void visitIfStmt(Stmt.If stmt) {
         if (isTruthy(stmt.condition))
             execute(stmt.thenBranch);
@@ -73,6 +84,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         Object value = evaluate(stmt.expression);
         System.out.println(stringify(value));
         return null;
+    }
+
+    @Override
+    public Void visitReturnStmt(Stmt.Return stmt) {
+        Object value = null;
+        if(stmt.value != null)
+            value = evaluate(stmt.value);
+
+        throw new Return(value);
     }
 
     @Override
@@ -150,6 +170,24 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Object visitCallExpr(Expr.Call expr) {
+        Object callee = evaluate(expr.callee);
+
+        List<Object> arguments = new ArrayList<>();
+        for (Expr argument : expr.arguments) {
+            arguments.add(evaluate(argument));
+        }
+
+        if (!(callee instanceof LoxCallable function))
+            throw new RuntimeError(expr.paren, "Can only call functions and classes.");
+
+        if (arguments.size() != function.arity())
+            throw new RuntimeError(expr.paren, STR."Expected \{function.arity()} arguments but got \{arguments.size()}.");
+
+        return function.call(this, arguments);
+    }
+
+    @Override
     public Object visitGroupingExpr(Expr.Grouping expr) {
         return evaluate(expr.expression);
     }
@@ -161,12 +199,12 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visitLogicalExpr(Expr.Logical expr) {
-        Object left =  evaluate(expr.left);
+        Object left = evaluate(expr.left);
 
-        if(expr.operator.type == OR) {
-            if(isTruthy(left)) return left;
+        if (expr.operator.type == OR) {
+            if (isTruthy(left)) return left;
         } else {
-            if(!isTruthy(left)) return left;
+            if (!isTruthy(left)) return left;
         }
         return evaluate(expr.right);
     }
