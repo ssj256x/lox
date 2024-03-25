@@ -84,6 +84,13 @@ public class Lox {
         // Stop if there was a syntax error
         if (hadError) return;
 
+        // Running resolver to resolve scopes of local variables
+        Resolver resolver = new Resolver(interpreter);
+        resolver.resolve(statements);
+
+        // Stop if there was a syntax error
+        if (hadError) return;
+
         interpreter.interpret(statements);
     }
 
